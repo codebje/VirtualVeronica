@@ -1,239 +1,136 @@
-SYMON - A 6502 System Simulator
-===============================
+Virtual Veronica - A 6502 System Simulator
+==========================================
 
-**Version:** 1.3.0
-
-**Last Updated:** 25 February, 2018
+**Version:** 1.0.0
 
 See the file COPYING for license.
 
-![Symon Simulator in Action](https://github.com/sethm/symon/raw/master/screenshots/full.jpg)
+## About
 
-## 1.0 About
+The Virtual Veronica is a simulator for Quinn Dunki's homebrew 6502
+based system, [Veronica](http://blondihacks.com/?page_id=1761). 
 
-Symon is a general purpose simulator for systems based on the MOS
-Technologies 6502 microprocessor and compatibles. Symon is implemented
-in Java. Its core goals are accuracy, ease of development, clear
-documentation, and extensive test suites for validating correctness.
+Currently, the simulator supports:
 
-Symon simulates a complete system with a 1 MHz NMOS 6502 or CMOS
-65C02, 32KB of RAM, 16KB of ROM, a MOS 6551 or Motorola 6850 ACIA, a
-MOS 6522 VIA, and an experimental 6545 CRTC.
+  - The 6502 processor (thanks to Symon)
+  - Keyboard input with an emulated VIA6522
+  - Video output using the classic Veronica GPU
 
-Symon has extensive unit tests to verify correctness, and fully passes
-Klaus Dormann's 6502 Functional Test Suite as of version 0.8.2
-(See [this thread on the 6502.org Forums](http://forum.6502.org/viewtopic.php?f=2&t=2241)
-for more information about this functional test suite).
+## Credits
 
-Symon is under constant, active development. Feedback and patches
-are always welcome.
+This software is very heavily based on the Symon 6502 simulator. More
+has been removed than added or modified.
 
-## 2.0 Requirements
+See [Symon's repository](https://github.com/sethm/symon) for full details.
+
+See **Acknowledgements** for Symon's copyright and licensing information.
+
+I have renamed the package and program, as the modifications made significantly
+alter the available features and functionality - this is now a single machine simulator
+for Veronica, with the removal of serial console devices, terminal emulation, and
+the existing set of machines.
+
+## Requirements
 
   - Java 1.8 or higher
   - Maven 2.0.x or higher (for building from source)
   - JUnit 4 or higher (for testing)
 
-## 3.0 Features
+## Simulator features
 
-Symon can simulate multiple 6502 based architectures. At present, three
-machines are implemented: Symon (the default), MULTICOMP, and a "Simple"
-machine useful for debugging.
+The features of the simulator are largely courtesy of Symon.
 
-### 3.1 Memory Maps
+### Veronica's Memory Map
 
-#### 3.1.1 Symon Memory Map
+The memory map in use is based on [this article](http://blondihacks.com/?p=1291) on Blondihacks:
 
-  - `$0000`--`$7FFF`: 32KB RAM
-  - `$8000`--`$800F`: 6522 VIA
-  - `$8800`--`$8803`: MOS 6551 ACIA (Serial Console)
-  - `$9000`--`$9001`: MOS 6545 CRTC
-  - `$C000`--`$FFFF`: 16KB ROM
+  - `$0000 - $00FF` - 6502 zero page (RAM)
+  - `$0100 - $01FF` - 6502 stack (RAM)
+  - `$0200 - $DFFF` - program memory (RAM)
+  - `$E000 - $E0FF` - VIA 6522 page (only first 16 bytes mapped)
+  - `$E100 - $EFFE` - Reserved for IO and ROM-managed RAM
+  - `$EFFF - $EFFF` - Veronica GPU IO register
+  - `$F000 - $FFFF` - ROM
 
-The CRT Controller uses memory address `$7000` as the start of Video
-memory.
+### ROM Loading
 
-#### 3.1.2 MULTICOMP Memory Map
+A new ROM image can be loaded via the "Load ROM..." action in the
+"File" menu. The ROM for Veronica is 4K, and includes the vector table.
+A file must be exactly 4K to be loaded.
 
-  - `$0000`--`$DFFF`: 56KB RAM
-  - `$E000`--`$FFFF`: 8KB ROM
-  - `$FFD0`--`$FFD1`: Motorola 6850 ACIA
-  - `$FFD8`--`$FFDF`: Controller for SD cards
-
-### 3.1.3 Simple Memory Map
-
-  - `$0000`--`$FFFF`: 64KB RAM
-
-### 3.2 Serial Console and CPU Status
-
-![Serial Console](https://github.com/sethm/symon/raw/master/screenshots/console.png)
-
-The main window of the simulator acts as the primary Input/Output
-system through a virtual serial terminal. The terminal is attached to
-a simulated ACIA, including a programmable baud rate generator that
-tries to approximate the correct "feel" of the programmed baud rate.
-(The sample Enhanced BASIC ROM image is programmed for 9600 baud)
-
-It also provides CPU status. Contents of the accumulator, index
-registers, processor status flags, disassembly of the instruction
-register, and stack pointer are all displayed.
-
-![Font Selection](https://github.com/sethm/symon/raw/master/screenshots/font_selection.png)
-
-The console supports font sizes from 10 to 20 points.
-
-### 3.3 ROM Loading
-
-![ROM Loading](https://github.com/sethm/symon/raw/master/screenshots/load_rom.png)
-
-Symon can load any appropriately sized ROM image. The Symon
-architecture expects as 16KB (16384 byte) ROM image, while the
-MULTICOMP architecture expects an 8KB (8192 byte) ROM image. Images
-are loaded via the "Load ROM..." action in the "File" menu. The
-selected ROM file will be loaded into memory at the correct ROM base
-address.
-
-### 3.4 Memory Window
-
-![Memory Window](https://github.com/sethm/symon/raw/master/screenshots/memory_window.png)
+### Memory Window
 
 Memory contents can be viewed (and edited) one page at a time through the Memory Window.
 
-### 3.5 Trace Log
+This feature is unmodified from the Symon simulator.
 
-![Trace Log](https://github.com/sethm/symon/raw/master/screenshots/trace_log.png)
+### Trace Log
 
 The last 20,000 execution steps are disassembled and logged to the Trace Log
 Window.
 
-### 3.6 Simulator Speeds
+This feature is unmodified from the Symon simulator.
 
-![Speeds](https://github.com/sethm/symon/raw/master/screenshots/simulator_menu.png)
-
-Simulated speeds may be set from 1MHz to 8MHz.
-
-### 3.7 Breakpoints
-
-![Breakpoints](https://github.com/sethm/symon/raw/master/screenshots/breakpoints.png)
+### Breakpoints
 
 Breakpoints can be set and removed through the Breakpoints window.
 
-### 3.8 Experimental 6545 CRTC Video
+This feature is unmodified from the Symon simulator.
 
-![Composite Video](https://github.com/sethm/symon/raw/master/screenshots/video_window.png)
+### Veronica GPU and I/O
 
-This feature is highly experimental. It's possible to open a video window
-from the "View" menu.  This window simulates the output of a MOS 6545 CRT
-Controller located at address `$9000` and `$9001`.
+## Usage
 
-By default, the 40 x 25 character display uses video memory located at base
-address `$7000`.  This means that the memory from address `$7000` (28672
-decimal) to `$73E8` (29672 decimal) is directly mapped to video.
+### Building the simulator
 
-  - Address Register (at address `$9000`)
-  - R1: Horizontal Displayed Columns
-  - R6: Vertical Displayed Rows
-  - R9: Scan Lines per Row
-  - R10: Cursor Start Scan Line and Cursor Control Mode
-  - R11: Cursor End Scan Line
-  - R12: Display Start Address (High Byte)
-  - R13: Display Start Address (Low Byte)
-  - R14: Cursor Position (High Byte)
-  - R15: Cursor Position (Low Byte)
-
-Although the simulation is pretty good, there are a few key differences
-between the simulated 6545 and a real 6545:
-
-  - The simulated 6545 supports only the straight binary addressing
-    mode of the real 6545, and not the Row/Column addressing mode.
-
-  - The simulated 6545 has full 16 bit addressing, where the real 6545
-    has only a 14-bit address bus.
-
-  - The simulation is done at a whole-frame level, meaning that lots
-    of 6545 programming tricks that were achieved by updating the
-    frame address during vertical and horizontal sync times are not
-    achievable.  There is no way (for example) to change the Display Start
-    Address (R12 and R13) while a frame is being drawn.
-
-For more information on the 6545 CRTC and its programming model, please see the following resources
-
-  - [CRTC 6545/6845 Information (André Fachat)](http://6502.org/users/andre/hwinfo/crtc/index.html)
-  - [CRTC Operation (André Fachat)](http://www.6502.org/users/andre/hwinfo/crtc/crtc.html)
-  - [MOS 6545 Datasheet (PDF)](http://www.6502.org/users/andre/hwinfo/crtc/crtc.html)
-
-
-#### 3.8.1 Example BASIC Program to test Video
-
-This program will fill the video screen with all printable characters.
-
-    10 J = 0
-    20 FOR I = 28672 TO 29672
-    30 POKE I,J
-    40 IF J < 255 THEN J = J + 1 ELSE J = 0
-    50 NEXT I
-    60 END
-
-## 4.0 Usage
-
-### 4.1 Building
-
-To build Symon with Apache Maven, just type:
+To build Virtual Veronica with Apache Maven, just type:
 
     $ mvn package
 
-Maven will build Symon, run unit tests, and produce a jar file in the
+Maven will build Virtual Veronica, run unit tests, and produce a jar file in the
 `target` directory containing the compiled simulator.
 
-Symon is meant to be invoked directly from the jar file. To run with
+Virtual Veronica is meant to be invoked directly from the jar file. To run with
 Java 1.8 or greater, just type:
 
-    $ java -jar symon-1.2.0.jar
+    $ java -jar vveronica-1.0.0.jar
 
-When Symon is running, you should be presented with a simple graphical
+When Virtual Veronica is running, you should be presented with a simple graphical
 interface.
 
-### 4.2 ROM images
+### ROM images
 
 The simulator requires a ROM image loaded into memory to work
 properly. Without a ROM in memory, the simulator will not be able to
 reset, since the reset vector for the 6502 is located in the ROM
 address space.
 
-By default, any file named `rom.bin` that exists in the same directory
-where Symon is launched will be loaded as a ROM image. ROM images can
-also be swapped out at run-time with the "Load ROM Image..." in the
-File menu.
+Virtual Veronica looks for a file named `veronica.rom` in the launch
+directory at start-up. Alternatively, a ROM image can be loaded at
+run-time, as described above.
 
-The "samples" directory contains a ROM image for the Symon
-architecture named 'ehbasic.rom', containing Lee Davison's Enhanced
-6502 BASIC. This serves as a good starting point for exploration.
-
-*Note*: Presently, EhBASIC only works with the Symon machine
- architecture, not with MULTICOMP.
-
-### 4.3 Loading A Program
+### Loading a program
 
 In addition to ROM images, programs in the form of raw binary object files can
 be loaded directly into memory from "Load Program..." in the File menu.
 
-Programs are loaded starting at addres $0300.  After loading the program, the
+Programs are loaded starting at address $0300.  After loading the program, the
 simulated CPU's reset vector is loaded with the values $00, $03, and the CPU is
 reset.
 
-There are two very simple sample program in the "samples" directory,
-for testing.
+This feature is unmodified from the Symon simulator. It has not been
+tested with Virtual Veronica as of version 1.0.0.
 
-- 'echo.prg' will echo back anything typed at the console.
-
-- 'hello.prg' will continuously print "Hello, 6502 World!" to the console.
-
-### 4.4 Running
+### Running
 
 After loading a program or ROM image, clicking "Run" will start the simulator
 running.
 
-## 5.0 Revision History
+## Revision history
+
+  - **1.0.0:** 2 October, 2019 - Virtual Veronica begins
+  
+### Symon revision history
 
   - **1.3.0:** 24 February, 2018 - Adds support for 65C02 opcodes.
 
@@ -294,41 +191,9 @@ running.
 
   - **0.1:** 20 January, 2010
 
-## 6.0 Roadmap
+## Acknowledgements
 
-  - **1.2:** Better breakpoint support. Symbolic debugging of breakpoints.
-
-  - **2.0:** Complete rewrite of the UI in JavaFX instead of Swing. Complete
-    assembler and disassembler built in. Ability to attach source code for
-    symbolic debugging.
-
-## 7.0 To Do
-
-  - Feedback (in the form of dialogs, status bar, etc).
-
-  - Better debugging tools from the UI, including breakpoints
-    and disassembly.
-
-  - UI needs a ton more polish.
-
-  - More extensive testing.
-
-  - Clean up JavaDoc.
-
-  - Implement CMOS 65C02 instructions and NMOS / CMOS mode flag.
-
-  - Allow displaying ACIA status and dumping ACIA buffers, for
-    debugging.
-
-  - CRTC emulation is very naive. The whole frame is drawn in one
-    CPU step. This should be improved by drawing scan lines during
-    machine steps to approximate real NTSC/PAL refresh rates.
-
-  - Symbolic debugging.
-
-## 8.0 Copyright and Acknowledgements
-
-**Copyright (c) 2014 Seth J. Morabito &lt;web@loomcom.com&gt;**
+**Symon Copyright (c) 2014 Seth J. Morabito &lt;web@loomcom.com&gt;**
 
 Portions Copyright (c) 2014 Maik Merten &lt;maikmerten@googlemail.com&gt;
 
@@ -336,7 +201,6 @@ Additional components used in this project are copyright their respective owners
 
   - Enhanced 6502 BASIC Copyright (c) Lee Davison
   - 6502 Functional Tests Copyright (c) Klaus Dormann
-  - JTerminal Copyright (c) Graham Edgecombe
 
 This project would not have been possible without the following resources:
 
@@ -346,7 +210,12 @@ This project would not have been possible without the following resources:
   - [Neil Parker's "The 6502/65C02/65C816 Instruction Set Decoded"](http://www.llx.com/~nparker/a2/opcodes.html),
     for information about how instructions are coded
 
-## 9.0 Licensing
+## Licensing
 
 Symon is free software.  It is distributed under the MIT License.
 Please see the file 'COPYING' for full details of the license.
+
+Virtual Veronica is under the same license.
+
+Veronica's ROM is ALL RIGHTS RESERVED Quinn Dunki
+and cannot be distributed in source or binary form.

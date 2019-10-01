@@ -1,12 +1,12 @@
 <project xmlns="http://maven.apache.org/POM/4.0.0" xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance"
          xsi:schemaLocation="http://maven.apache.org/POM/4.0.0 http://maven.apache.org/maven-v4_0_0.xsd">
     <modelVersion>4.0.0</modelVersion>
-    <groupId>com.loomcom.symon</groupId>
-    <artifactId>symon</artifactId>
+    <groupId>com.github.codebje</groupId>
+    <artifactId>vveronica</artifactId>
     <packaging>jar</packaging>
-    <version>1.3.0-SNAPSHOT</version>
-    <name>symon</name>
-    <url>http://www.loomcom.com/symon</url>
+    <version>1.0.0-SNAPSHOT</version>
+    <name>vveronica</name>
+    <url>https://github.com/codebje/vveronica</url>
     <properties>
         <project.build.sourceEncoding>
             UTF-8
@@ -48,7 +48,7 @@
                     <appendAssemblyId>false</appendAssemblyId>
                     <archive>
                         <manifest>
-                            <mainClass>com.loomcom.symon.Main</mainClass>
+                            <mainClass>com.github.codebje.Main</mainClass>
                         </manifest>
                     </archive>
                 </configuration>
@@ -67,8 +67,8 @@
                 <version>3.7.0</version>
                 <configuration>
                     <compilerArgument>-Xlint:unchecked</compilerArgument>
-                    <source>1.7</source>
-                    <target>1.7</target>
+                    <source>1.8</source>
+                    <target>1.8</target>
                 </configuration>
             </plugin>
 
@@ -80,8 +80,8 @@
                 <configuration>
                     <archive>
                         <manifest>
-                            <mainClass>com.loomcom.symon.Simulator</mainClass>
-                            <packageName>com.loomcom.symon</packageName>
+                            <mainClass>com.github.codebje.Simulator</mainClass>
+                            <packageName>com.github.codebje</packageName>
                         </manifest>
                         <manifestEntries>
                             <mode>development</mode>
@@ -96,7 +96,7 @@
                 <artifactId>exec-maven-plugin</artifactId>
                 <version>1.2.1</version>
                 <configuration>
-                    <mainClass>com.loomcom.symon.Simulator</mainClass>
+                    <mainClass>com.github.codebje.Simulator</mainClass>
                 </configuration>
                 <executions>
                     <execution>
