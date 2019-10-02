@@ -30,6 +30,18 @@ public class VeronicaGPU extends VideoDevice {
     private static final byte CURSORXPOS = 0x06;
     private static final byte CURSORYPOS = 0x07;
 
+    // VGA signal is 25.175MHz clock, 800 clocks per line, 524 lines per frame
+    // for a total rate of a hair over 60Hz per frame. This constant computes
+    // the number of nanoseconds in one frame of video. For 640x480 mode, there
+    // are 800 pixel clocks per horizontal lines, and 524 lines per frame.
+    private static final long NANOS_PER_FRAME
+            = 800 * 524 * (1000000000 / 25175000);
+
+    // The vertical blanking time is 11 lines of front porch, 2 lines of sync pulse,
+    // and 31 lines of back porch, for 44 lines total.
+    private static final long NANOS_PER_VBLANK
+            = 800 * 44 * (1000000000 / 25175000);
+
     private byte commandByte = 0;
     private byte fontFgClr = 0x16;
     private byte fontBgClr = 0x16;
@@ -155,7 +167,10 @@ public class VeronicaGPU extends VideoDevice {
 
     @Override
     public int read(int address, boolean cpuAccess) throws MemoryAccessException {
-        return 0;
+        long frameTime = System.nanoTime() % NANOS_PER_FRAME;
+
+        // 0xff in VBL period, 0x00 outside of it.
+        return (frameTime > NANOS_PER_VBLANK) ? 0x00 : 0xff;
     }
 
     @Override
