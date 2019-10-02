@@ -92,8 +92,10 @@ complete code package available in the article [Veronica – GPU Recap](http://b
 |   $06   | coordinate | Set cursor X coordinate |
 |   $07   | coordinate | Set cursor Y coordinate |
 
-The simulated GPU does not currently implement the status register values, which
-means code that waits for vertical blanking periods will wait forever.
+The simulated GPU's status register approximates a VGA video blanking signal using
+Java's `System.nanoTime()`. The signal is noisy due to the JVM's operations: the simulated
+CPU's clock isn't very accurate, so a busy loop looking for video sync and outputting
+ status will see some variability.
 
 It's highly likely the final Veronica GPU included more commands, sufficient to play Pong, but
 the commands are not documented.
