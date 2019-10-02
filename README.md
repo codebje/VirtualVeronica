@@ -79,6 +79,37 @@ This feature is unmodified from the Symon simulator.
 
 ### Veronica GPU and I/O
 
+The Veronica GPU as implemented in this simulator has the set of commands from the
+complete code package available in the article [Veronica – GPU Recap](http://blondihacks.com/?p=1227).
+
+| Command | Argument | Description |
+| ------- | -------- | ----------- |
+|   $01   | colour   | Clear screen to colour |
+|   $02   | character | Plot character at cursor x, y |
+|   $03   | character | Plot character and advance cursor |
+|   $04   | colour   | Set font foreground colour |
+|   $05   | colour   | Set font background colour |
+|   $06   | coordinate | Set cursor X coordinate |
+|   $07   | coordinate | Set cursor Y coordinate |
+
+The simulated GPU does not currently implement the status register values, which
+means code that waits for vertical blanking periods will wait forever.
+
+It's highly likely the final Veronica GPU included more commands, sufficient to play Pong, but
+the commands are not documented.
+
+The Veronica 6522 IO system implements the keyboard protocol of Veronica,
+sending a keycode on key down, and $F0 followed by the same keycode on key up.
+
+However, the keycode map is defined by Java's KeyEvent, not any of the PS/2 keycode maps. This map
+is much closer to ASCII than the PS/2 map used by Veronica, which makes some things easier…
+
+The IFR register of the 6522 is correctly set on interrupt, but is currently never cleared.
+
+Key interrupts are sent to the Veronica's CPU at a maximum rate of 100Hz. This introduces a little
+keyboard lag, but prevents the CPU tripping up trying to read $F0 and the release keycode in very
+quick succession.
+
 ## Usage
 
 ### Building the simulator
@@ -97,6 +128,12 @@ Java 1.8 or greater, just type:
 
 When Virtual Veronica is running, you should be presented with a simple graphical
 interface.
+
+### Building a ROM image
+
+Included is a Makefile and machine configuration file for CC65 to produce a
+ROM image. The only missing portion is the ROM source, which is currently not
+freely distributable.
 
 ### ROM images
 
