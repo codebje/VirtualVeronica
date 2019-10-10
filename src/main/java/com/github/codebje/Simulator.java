@@ -685,10 +685,12 @@ public class Simulator {
                                 showSourceView.setSelected(false);
                             }
                         });
+                        showSourceView.setSelected(true);
 
                     } catch (Exception ex) {
 
                         logger.error("Unable to load debug file", ex);
+                        showSourceView.setSelected(false);
                         JOptionPane.showMessageDialog(mainWindow, ex.getMessage(), "Failure", JOptionPane.ERROR_MESSAGE);
 
                     }
