@@ -1,16 +1,15 @@
 CA=ca65
 LD=ld65
 
-all: veronica.rom
-
-veronica.rom: veronica.o
+all: veronica.rom 
+veronica.rom: veronica.o vbasic.o
 	$(LD) -C veronica.config -vm -m veronica.map -o $@ $^
 
-veronica.o: veronica.s
-	$(CA) --listing veronica.lst -o $@ $^
+%.o %.lst : %.asm
+	$(CA) --listing $*.lst -o $*.o $*.asm
 
 install: veronica.rom
 	cp $^ ../../../
 
 clean:
-	rm -f veronica.o veronica.rom veronica.map veronica.lst
+	rm -f *.o *.rom *.map *.lst

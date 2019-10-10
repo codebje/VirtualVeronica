@@ -29,6 +29,7 @@ public class VeronicaGPU extends VideoDevice {
     private static final byte FONTBGCLR = 0x05;
     private static final byte CURSORXPOS = 0x06;
     private static final byte CURSORYPOS = 0x07;
+    private static final byte SCROLLMODE = 0x60;
 
     // VGA signal is 25.175MHz clock, 800 clocks per line, 524 lines per frame
     // for a total rate of a hair over 60Hz per frame. This constant computes
@@ -47,6 +48,7 @@ public class VeronicaGPU extends VideoDevice {
     private byte fontBgClr = 0x16;
     private byte cursorXpos = 0;
     private byte cursorYpos = 0;
+    private boolean scrollMode = false;
 
     private final BufferedImage image;
 
@@ -84,7 +86,7 @@ public class VeronicaGPU extends VideoDevice {
 
         try {
             byte[] logo = loadBootLogo("/veronica-boot-logo.img");
-            image.getRaster().setDataElements(28, 88, 200, 64, logo);
+//            image.getRaster().setDataElements(28, 88, 200, 64, logo);
         } catch (IOException ex) {
             // no logo!
         }
@@ -120,10 +122,12 @@ public class VeronicaGPU extends VideoDevice {
     @Override
     public void write(int address, int data) throws MemoryAccessException {
 
+        Graphics2D g2d;
+
         // GPU commands are a two-byte packet, command then argument
         switch (commandByte) {
             case CLEARSCR:
-                Graphics2D g2d = image.createGraphics();
+                g2d = image.createGraphics();
                 g2d.setColor(new Color(image.getColorModel().getRGB(data)));
                 g2d.fillRect(0, 0, IMAGE_WIDTH, IMAGE_HEIGHT);
                 g2d.dispose();
@@ -134,14 +138,31 @@ public class VeronicaGPU extends VideoDevice {
             case PLOTSTR:
                 if (data == '\n') {
                     cursorXpos = 0;
-                    cursorYpos = (byte)((cursorYpos + 1) % TEXT_MAX_Y);
+                    cursorYpos++;
+                } else if (data == '\b') {
+                    if (--cursorXpos < 0) {
+                        cursorXpos = 0;
+                    } else {
+                        plotCharacter(0);
+                    }
                 } else {
                     plotCharacter(data);
                     if (++cursorXpos >= TEXT_MAX_X) {
                         cursorXpos = 0;
-                        if (++cursorYpos >= TEXT_MAX_Y) {
-                            cursorYpos = 0;
-                        }
+                        cursorYpos++;
+                    }
+                }
+                // handle scroll/wrap of Y cursor
+                if (cursorYpos >= TEXT_MAX_Y) {
+                    if (scrollMode) {
+                        g2d = image.createGraphics();
+                        g2d.copyArea(0, 8, IMAGE_WIDTH, IMAGE_HEIGHT - 8, 0, -8);
+                        g2d.setBackground(new Color(image.getColorModel().getRGB(fontBgClr)));
+                        g2d.clearRect(0, IMAGE_HEIGHT - 8, IMAGE_WIDTH, 8);
+                        g2d.dispose();
+                        cursorYpos--;
+                    } else {
+                        cursorYpos = 0;
                     }
                 }
                 break;
@@ -156,6 +177,9 @@ public class VeronicaGPU extends VideoDevice {
                 break;
             case CURSORYPOS:
                 cursorYpos = (byte)data;
+                break;
+            case SCROLLMODE:
+                scrollMode = data != 0;
                 break;
 
         }
@@ -199,7 +223,7 @@ public class VeronicaGPU extends VideoDevice {
 
     private static final int[] FONT_DATA = {
             // Font data from https://robey.lag.net/2010/01/23/tiny-monospace-font.html
-            0x00,0xea,0xaa,0xe0,        // character 0
+            0x00,0x00,0x00,0x00,        // character 0
             0x00,0xea,0xaa,0xe0,        // character 1
             0x00,0xea,0xaa,0xe0,        // character 2
             0x00,0xea,0xaa,0xe0,        // character 3

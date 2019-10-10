@@ -49,6 +49,7 @@ public class Main {
                 UIManager.setLookAndFeel(UIManager.getSystemLookAndFeelClassName());
                 // Create the main UI window
                 simulator.createAndShowUi();
+
             } catch (Exception e) {
                 e.printStackTrace();
             }

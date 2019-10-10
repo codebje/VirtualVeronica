@@ -33,6 +33,7 @@ import com.github.codebje.exceptions.MemoryRangeException;
 import com.github.codebje.Cpu;
 
 import java.awt.event.KeyListener;
+import java.io.File;
 
 
 public interface Machine {
@@ -62,4 +63,7 @@ public interface Machine {
     void reset() throws MemoryAccessException;
 
     String getName();
+
+    File getDefaultRomFile();
+
 }

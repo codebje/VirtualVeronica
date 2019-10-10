@@ -23,6 +23,7 @@
 
 package com.github.codebje;
 
+import com.github.codebje.cc65debug.DebugInfo;
 import com.github.codebje.exceptions.MemoryAccessException;
 import com.github.codebje.exceptions.MemoryRangeException;
 import com.github.codebje.exceptions.SymonException;
@@ -33,6 +34,7 @@ import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
 import javax.swing.*;
+import javax.swing.border.EmptyBorder;
 import java.awt.*;
 import java.awt.event.*;
 import java.io.*;
@@ -48,9 +50,6 @@ import java.io.*;
 public class Simulator {
 
     private final static Logger logger = LoggerFactory.getLogger(Simulator.class.getName());
-
-    // UI constants
-    private static final int DEFAULT_FONT_SIZE = 12;
 
     // Clock periods, in NS, for each speed. 0MHz, 1MHz, 2MHz, 3MHz, 4MHz, 5MHz, 6MHz, 7MHz, 8MHz.
     private static final long[] CLOCK_PERIODS = {0, 1000, 500, 333, 250, 200, 167, 143, 125};
@@ -68,6 +67,9 @@ public class Simulator {
 
     // The simulated machine
     private Machine machine;
+
+    // The current ROM image
+    private File currentRomFile;
 
     // A counter to keep track of the number of UI updates that have been
     // requested
@@ -93,6 +95,12 @@ public class Simulator {
      */
     private final MemoryWindow memoryWindow;
 
+    /**
+     * The Source Window shows the source file.
+     */
+    private SourceWindow sourceWindow;
+    private JCheckBoxMenuItem showSourceView;
+
     private final VideoPanel videoPanel;
 
     private final BreakpointsWindow breakpointsWindow;
@@ -101,6 +109,7 @@ public class Simulator {
 
     private RunLoop runLoop;
     private StatusPanel statusPane;
+    private JLabel statusLabel;
 
     private JButton runStopButton;
     private JButton stepButton;
@@ -134,6 +143,7 @@ public class Simulator {
         this.traceLog = new TraceLog();
         this.memoryWindow = new MemoryWindow(machine.getBus());
         this.breakpointsWindow = new BreakpointsWindow(breakpoints, mainWindow);
+        this.sourceWindow = null;
 
         if (machine.getGPU() != null) {
             videoPanel = new VideoPanel(machine.getGPU(),2, 2);
@@ -144,6 +154,7 @@ public class Simulator {
         if (videoPanel != null && machine.getIO() != null) {
             videoPanel.setKeyListener(machine.getIO());
         }
+
     }
 
     /**
@@ -189,14 +200,29 @@ public class Simulator {
         buttonContainer.add(softResetButton);
         buttonContainer.add(hardResetButton);
 
+        // Status label
+        statusLabel = new JLabel("status");
+        statusLabel.setHorizontalAlignment(SwingConstants.CENTER);
+        statusLabel.setBorder(new EmptyBorder(0,10,5,10));
+
+        // Panel for buttons/status label
+        JPanel statusPanel = new JPanel();
+        statusPanel.setLayout(new GridBagLayout());
+        GridBagConstraints constraints = new GridBagConstraints();
+        constraints.fill = GridBagConstraints.HORIZONTAL;
+        constraints.weightx = 1;
+        constraints.gridx = 0;
+        statusPanel.add(buttonContainer, constraints);
+        statusPanel.add(statusLabel, constraints);
+
         // Left side - video
         mainWindow.getContentPane().add(videoPanel, BorderLayout.LINE_START);
 
         // Right side - status pane
         mainWindow.getContentPane().add(statusPane, BorderLayout.LINE_END);
 
-        // Bottom - buttons.
-        mainWindow.getContentPane().add(buttonContainer, BorderLayout.PAGE_END);
+        // Bottom - buttons and status line
+        mainWindow.getContentPane().add(statusPanel, BorderLayout.PAGE_END);
 
         runStopButton.addActionListener(actionEvent -> {
             if (runLoop != null && runLoop.isRunning()) {
@@ -225,7 +251,11 @@ public class Simulator {
         mainWindow.setVisible(true);
 
         videoPanel.requestFocus();
-        handleReset(false);
+
+        // This doesn't really belong here, but the window must be created before the ROM can
+        // be loaded, and the window is created from Main() which shouldn't know about Simulator
+        // behaviours like loading the ROM.
+        loadRomFile(machine.getDefaultRomFile());
     }
 
     MainCommand waitForCommand() {
@@ -247,12 +277,14 @@ public class Simulator {
         runLoop = new RunLoop();
         runLoop.start();
         traceLog.simulatorDidStart();
+        statusLabel.setText("Simulator running");
     }
 
     private void handleStop() {
         runLoop.requestStop();
         runLoop.interrupt();
         runLoop = null;
+        statusLabel.setText("Simulator stopped");
     }
 
     /*
@@ -279,11 +311,14 @@ public class Simulator {
                 if (mem != null) {
                     mem.fill(0);
                 }
+                loadRomFile(currentRomFile);
             }
             // Update status.
             updateVisibleState();
+            statusLabel.setText("Machine reset");
         } catch (MemoryAccessException ex) {
             logger.error("Exception during simulator reset", ex);
+            statusLabel.setText("Memory access exception during reset: " + ex.getMessage());
         }
     }
 
@@ -468,51 +503,55 @@ public class Simulator {
         }
 
         public void actionPerformed(ActionEvent actionEvent) {
-            try {
-                int retVal = fileChooser.showOpenDialog(mainWindow);
-                if (retVal == JFileChooser.APPROVE_OPTION) {
-                    File romFile = fileChooser.getSelectedFile();
-                    if (romFile.canRead()) {
-                        long fileSize = romFile.length();
-
-                        if (fileSize != machine.getRomSize()) {
-                            throw new IOException("ROM file must be exactly " + String.valueOf(machine.getRomSize()) + " bytes.");
-                        }
-
-                        // Load the new ROM image
-                        Memory rom = Memory.makeROM(machine.getRomBase(), machine.getRomBase() + machine.getRomSize() - 1, romFile);
-                        machine.setRom(rom);
-
-                        // Now, reset
-                        machine.getCpu().reset();
-
-                        updateVisibleState();
-
-                        // Refresh breakpoints to show new memory contents.
-                        breakpoints.refresh();
-
-                        logger.info("ROM File `{}' loaded at {}", romFile.getName(),
-                                String.format("0x%04X", machine.getRomBase()));
-                        // TODO: "Don't Show Again" checkbox
-                        JOptionPane.showMessageDialog(mainWindow,
-                                "Loaded Successfully At " +
-                                        String.format("$%04X", machine.getRomBase()),
-                                "OK",
-                                JOptionPane.PLAIN_MESSAGE);
-
-                    }
-                }
-            } catch (IOException ex) {
-                logger.error("Unable to read ROM file: {}", ex.getMessage());
-                JOptionPane.showMessageDialog(mainWindow, ex.getMessage(), "Failure", JOptionPane.ERROR_MESSAGE);
-            } catch (MemoryRangeException ex) {
-                logger.error("Memory range error while loading ROM file: {}", ex.getMessage());
-                JOptionPane.showMessageDialog(mainWindow, ex.getMessage(), "Failure", JOptionPane.ERROR_MESSAGE);
-            } catch (MemoryAccessException ex) {
-                logger.error("Memory access error while loading ROM file: {}", ex.getMessage());
-                JOptionPane.showMessageDialog(mainWindow, ex.getMessage(), "Failure", JOptionPane.ERROR_MESSAGE);
+            int retVal = fileChooser.showOpenDialog(mainWindow);
+            if (retVal == JFileChooser.APPROVE_OPTION) {
+                File romFile = fileChooser.getSelectedFile();
+                loadRomFile(romFile);
             }
         }
+    }
+
+    private void loadRomFile(File romFile) {
+
+        try {
+            currentRomFile = romFile;
+
+            if (romFile.canRead()) {
+
+                long fileSize = romFile.length();
+
+                if (fileSize != machine.getRomSize()) {
+                    throw new IOException("ROM file must be exactly " + String.valueOf(machine.getRomSize()) + " bytes.");
+                }
+
+                // Load the new ROM image
+                Memory rom = Memory.makeROM(machine.getRomBase(), machine.getRomBase() + machine.getRomSize() - 1, romFile);
+                machine.setRom(rom);
+
+                // Now, reset
+                machine.getCpu().reset();
+
+                updateVisibleState();
+
+                // Refresh breakpoints to show new memory contents.
+                breakpoints.refresh();
+
+                logger.info("ROM File `{}' loaded at {}", romFile.getName(),
+                        String.format("0x%04X", machine.getRomBase()));
+                statusLabel.setText("ROM loaded successfully at " + String.format("$%04X", machine.getRomBase()));
+            }
+
+        } catch (IOException ex) {
+            logger.error("Unable to read ROM file: {}", ex.getMessage());
+            statusLabel.setText("ROM loaded failed: " + ex.getMessage());
+        } catch (MemoryRangeException ex) {
+            logger.error("Memory range error while loading ROM file: {}", ex.getMessage());
+            statusLabel.setText("ROM loaded failed: memory range error");
+        } catch (MemoryAccessException ex) {
+            logger.error("Memory access error while loading ROM file: {}", ex.getMessage());
+            statusLabel.setText("ROM loaded failed: memory access error");
+        }
+
     }
 
     class ShowPrefsAction extends AbstractAction {
@@ -540,17 +579,6 @@ public class Simulator {
                 runLoop.interrupt();
             }
             System.exit(0);
-        }
-    }
-
-    class SetFontAction extends AbstractAction {
-        SetFontAction(int size) {
-            super(Integer.toString(size) + " pt", null);
-            putValue(SHORT_DESCRIPTION, "Set font to " + size + "pt.");
-        }
-
-        public void actionPerformed(ActionEvent actionEvent) {
-            SwingUtilities.invokeLater(() -> mainWindow.pack());
         }
     }
 
@@ -621,6 +649,56 @@ public class Simulator {
                 }
             }
         }
+    }
+
+    class ToggleSourceWindowAction extends AbstractAction {
+        ToggleSourceWindowAction() {
+            super("Source Window", null);
+            putValue(SHORT_DESCRIPTION, "Show or hide the Source Window");
+        }
+
+        public void actionPerformed(ActionEvent actionEvent) {
+
+            if (sourceWindow != null) {
+
+                sourceWindow.dispose();
+                sourceWindow = null;
+
+            } else {
+
+                int retVal = fileChooser.showOpenDialog(mainWindow);
+
+                if (retVal == JFileChooser.APPROVE_OPTION) {
+
+                    File debugFile = fileChooser.getSelectedFile();
+
+                    try {
+
+                        DebugInfo debugInfo = DebugInfo.loadDebugFile(debugFile);
+                        sourceWindow = new SourceWindow(debugInfo);
+                        sourceWindow.setVisible(true);
+                        sourceWindow.setProgramCounter(machine.getCpu().getProgramCounter());
+                        sourceWindow.setDefaultCloseOperation(WindowConstants.DISPOSE_ON_CLOSE);
+                        sourceWindow.addWindowListener(new WindowAdapter() {
+                            @Override
+                            public void windowClosing(WindowEvent e) {
+                                showSourceView.setSelected(false);
+                            }
+                        });
+
+                    } catch (Exception ex) {
+
+                        logger.error("Unable to load debug file", ex);
+                        JOptionPane.showMessageDialog(mainWindow, ex.getMessage(), "Failure", JOptionPane.ERROR_MESSAGE);
+
+                    }
+
+                }
+
+            }
+
+        }
+
     }
 
     class ToggleBreakpointWindowAction extends AbstractAction {
@@ -723,6 +801,9 @@ public class Simulator {
             });
             viewMenu.add(showMemoryTable);
 
+            showSourceView = new JCheckBoxMenuItem(new ToggleSourceWindowAction());
+            viewMenu.add(showSourceView);
+
             add(viewMenu);
 
             /*
@@ -765,15 +846,6 @@ public class Simulator {
             add(simulatorMenu);
         }
 
-        private void makeFontSizeMenuItem(int size, JMenu subMenu, ButtonGroup group) {
-            Action action = new SetFontAction(size);
-
-            JCheckBoxMenuItem item = new JCheckBoxMenuItem(action);
-            item.setSelected(size == DEFAULT_FONT_SIZE);
-            subMenu.add(item);
-            group.add(item);
-        }
-
         private void makeSpeedMenuItem(int speed, JMenu subMenu, ButtonGroup group) {
             if (speed < 1 || speed > CLOCK_PERIODS.length - 1) {
                 return;
@@ -808,6 +880,8 @@ public class Simulator {
             if (traceLog.shouldUpdate()) {
                 traceLog.refresh();
             }
+            if (sourceWindow != null)
+                sourceWindow.setProgramCounter(machine.getCpu().getProgramCounter());
         });
     }
 

@@ -43,12 +43,11 @@ public class Veronica implements Machine {
         bus.addDevice(gpu, 1);
         bus.addDevice(via, 1);
 
-        File romImage = new File("veronica.rom");
-        if (romImage.canRead()) {
-            this.rom = Memory.makeROM(ROM_BASE, ROM_TOP, romImage);
-            bus.addDevice(rom, 1);
-        }
+    }
 
+    @Override
+    public File getDefaultRomFile() {
+        return new File("veronica.rom");
     }
 
     @Override
@@ -109,6 +108,7 @@ public class Veronica implements Machine {
     public void reset() throws MemoryAccessException {
         cpu.reset();
         gpu.reset();
+        via.reset();
     }
 
     @Override

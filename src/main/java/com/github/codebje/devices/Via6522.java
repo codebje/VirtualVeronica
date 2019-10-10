@@ -42,7 +42,7 @@ public class Via6522 extends Pia implements KeyListener {
     private static final Logger logger = Logger.getLogger(Via6522.class.getName());
 
     private static final int VIA_SIZE = 16;
-    private static final int IRQ_RATE = 10;  // ms
+    private static final int IRQ_RATE = 15;  // ms
 
     enum Register {
         ORB, ORA, DDRB, DDRA, T1C_L, T1C_H, T1L_L, T1L_H,
@@ -144,6 +144,7 @@ public class Via6522 extends Pia implements KeyListener {
     @Override
     public void reset() throws MemoryAccessException {
         registerMap.clear();
+        codeQueue.clear();
     }
 
     public void keyPressed(KeyEvent keyEvent) {
